@@ -2,7 +2,7 @@
 
 ## Preliminary Exam Replication
 
-I am replicating the results from [Chernozhukov, Newey, Quintas-Martínez and Syrgkanis (2021), "RieszNet and ForestRiesz: Automatic Debiased Machine Learning with Neural Nets and Random Forests"](https://arxiv.org/abs/2110.03031) for my preliminary exam in the University of Washington Statistics PhD program, as part of my PhD requirements.
+I am replicating the results from [Chernozhukov, Newey, Quintas-Martínez and Syrgkanis (2021), "RieszNet and ForestRiesz: Automatic Debiased Machine Learning with Neural Nets and Random Forests"](https://arxiv.org/abs/2110.03031) for the preliminary exam in the University of Washington Statistics Department.
 
 ## Environment Setup
    ```bash
