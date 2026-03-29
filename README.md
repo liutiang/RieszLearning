@@ -1,4 +1,22 @@
-Replication files for [Chernozhukov, Newey, Quintas-Martínez and Syrgkanis (2021) "RieszNet and ForestRiesz: Automatic Debiased Machine Learning with Neural Nets and Random Forests"](https://arxiv.org/abs/2110.03031)
+# RieszLearning
+
+## Preliminary Exam Replication
+
+I am replicating the results from [Chernozhukov, Newey, Quintas-Martínez and Syrgkanis (2021), "RieszNet and ForestRiesz: Automatic Debiased Machine Learning with Neural Nets and Random Forests"](https://arxiv.org/abs/2110.03031) for my preliminary exam in the University of Washington Statistics PhD program, as part of my PhD requirements.
+
+## Environment Setup
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   python -m pip install --upgrade pip
+   pip install -r requirment.txt
+   ```
+If you want to use the environment in Jupyter notebooks, register it as a kernel and deactivate it when you are done working:
+
+   ```bash
+   python -m ipykernel install --user --name rieszlearning --display-name "Python (.venv)"
+   deactivate
+   ```
 
 ## Main Files
 

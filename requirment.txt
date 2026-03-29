@@ -1,0 +1,14 @@
+# Dependencies inferred from the project notebooks and utils/ modules
+# Most notebooks in this repo were originally run with Python 3.8.10.
+
+econml
+ipykernel
+joblib
+matplotlib
+numpy
+pandas
+scikit-learn
+scipy
+statsmodels
+tensorboard
+torch
