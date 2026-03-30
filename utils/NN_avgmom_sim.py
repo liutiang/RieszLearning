@@ -81,15 +81,16 @@ def est_avgmom_NN(X, y, moment_fn, n_hidden, drop_prob, true_reg, true_rr, scale
     torch.cuda.empty_cache()
     learner = Learner(X_train.shape[1], n_hidden, drop_prob, 0)
     agmm = RieszNet(learner, moment_fn)
+    model_dir = str(Path.cwd() / ".riesznet_models")
     # Fast training
     agmm.fit(X_train, y_train, Xval=X_test, yval=y_test,
             **fast_train_opt,
-            model_dir=str(Path.home()), device=device, verbose=0)
+            model_dir=model_dir, device=device, verbose=0)
     # Fine tune
     agmm.fit(X_train, y_train, Xval=X_test, yval=y_test,
             **train_opt,
             warm_start=True,
-            model_dir=str(Path.home()), device=device, verbose=0)
+            model_dir=model_dir, device=device, verbose=0)
 
     reg_hat, rr_hat = agmm.predict(X, model = 'earlystop')[:, 0].flatten(), agmm.predict(X, model = 'earlystop')[:, 1].flatten()
 

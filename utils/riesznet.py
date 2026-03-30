@@ -1,5 +1,6 @@
 import os
 import copy
+import inspect
 import numpy as np
 import tempfile
 import torch
@@ -38,6 +39,27 @@ def L1_reg(net, l1_value, skip_list=()):
             L1_reg_loss += torch.sum(abs(param))
     L1_reg_loss *= l1_value
     return L1_reg_loss
+
+def make_reduce_on_plateau(optimizer, verbose):
+    kwargs = {
+        'mode': 'min',
+        'factor': 0.5,
+        'patience': 5,
+        'threshold': 0.0,
+        'threshold_mode': 'abs',
+        'cooldown': 0,
+        'min_lr': 0,
+        'eps': 1e-08,
+    }
+    if 'verbose' in inspect.signature(optim.lr_scheduler.ReduceLROnPlateau.__init__).parameters:
+        kwargs['verbose'] = verbose
+    return optim.lr_scheduler.ReduceLROnPlateau(optimizer, **kwargs)
+
+def load_torch_model(path):
+    kwargs = {}
+    if 'weights_only' in inspect.signature(torch.load).parameters:
+        kwargs['weights_only'] = False
+    return torch.load(path, **kwargs)
 
 class RieszArch(nn.Module):
 
@@ -127,9 +149,7 @@ class RieszNet:
             min_eval = np.inf
             time_since_last_improvement = 0
             best_learner_state_dict = copy.deepcopy(self.learner.state_dict())
-            lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizerD, mode='min', factor=0.5,
-                patience=5, threshold=0.0, threshold_mode='abs', cooldown=0, min_lr=0,
-                eps=1e-08, verbose=(self.verbose>0))
+            lr_scheduler = make_reduce_on_plateau(self.optimizerD, self.verbose > 0)
 
         for epoch in range(n_epochs):
 
@@ -241,10 +261,10 @@ class RieszNet:
 
     def get_model(self, model):
         if model == 'final':
-            return torch.load(os.path.join(self.model_dir,
+            return load_torch_model(os.path.join(self.model_dir,
                                            "epoch{}".format(self.n_epochs - 1)))
         if model == 'earlystop':
-            return torch.load(os.path.join(self.model_dir,
+            return load_torch_model(os.path.join(self.model_dir,
                                            "earlystop"))
 
         raise AttributeError("Not implemented")
@@ -417,9 +437,7 @@ class RieszNetRR:
             min_eval = np.inf
             time_since_last_improvement = 0
             best_learner_state_dict = copy.deepcopy(self.learner.state_dict())
-            lr_scheduler = optim.lr_scheduler.ReduceLROnPlateau(self.optimizerD, mode='min', factor=0.5,
-                patience=5, threshold=0.0, threshold_mode='abs', cooldown=0, min_lr=0,
-                eps=1e-08, verbose=(self.verbose>0))
+            lr_scheduler = make_reduce_on_plateau(self.optimizerD, self.verbose > 0)
 
         for epoch in range(n_epochs):
 
@@ -521,10 +539,10 @@ class RieszNetRR:
 
     def get_model(self, model):
         if model == 'final':
-            return torch.load(os.path.join(self.model_dir,
+            return load_torch_model(os.path.join(self.model_dir,
                                            "epoch{}".format(self.n_epochs - 1)))
         if model == 'earlystop':
-            return torch.load(os.path.join(self.model_dir,
+            return load_torch_model(os.path.join(self.model_dir,
                                            "earlystop"))
 
         raise AttributeError("Not implemented")
