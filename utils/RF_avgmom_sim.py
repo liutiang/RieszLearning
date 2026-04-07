@@ -15,7 +15,7 @@ from sklearn.model_selection import KFold
 import statsmodels.api as sm
 
 def mean_ci(data, confidence=0.95):
-    a = 1.0 * np.array(data)
+    a = np.asarray(data, dtype=float)
     n = len(a)
     m, se = np.mean(a), scipy.stats.sem(a)
     h = se * scipy.stats.t.ppf((1 + confidence) / 2., n-1)
@@ -24,15 +24,22 @@ def mean_ci(data, confidence=0.95):
 def rmse_fn(y_pred, y_true):
     return np.sqrt(np.mean((y_pred - y_true)**2))
 
+def _as_float_matrix(data):
+    return np.asarray(data, dtype=float)
+
+def _as_float_vector(data):
+    return np.asarray(data, dtype=float).reshape(-1)
+
 methods = ['dr', 'reg', 'ips', 'tmle', 'plugin']
 
 # 1. Estimation
 def predict_avg_mom(y, X, reg, rr, mom_reg, mom_rr, method = 'dr'):
-    y = y.flatten()
-    reg = reg.flatten()
-    rr = rr.flatten()
-    mom_reg = mom_reg.flatten()
-    mom_rr = mom_rr.flatten()
+    X = _as_float_matrix(X)
+    y = _as_float_vector(y)
+    reg = _as_float_vector(reg)
+    rr = _as_float_vector(rr)
+    mom_reg = _as_float_vector(mom_reg)
+    mom_rr = _as_float_vector(mom_rr)
 
     if method == 'reg':
         return mean_ci(mom_reg)
@@ -82,6 +89,8 @@ class OracleRR:
 def est_avgmom_RF(X, y, moment_fn, true_reg, true_rr, scale_y = True,
                   xfit = 0, multitasking = True, oracle = '',
                   ForestRiesz_opt = {}, RFreg_opt = {}, RFrr_opt = {}):
+    X = _as_float_matrix(X)
+    y = _as_float_vector(y)
 
     # Scale y
     if scale_y:
@@ -146,12 +155,19 @@ def est_avgmom_RF(X, y, moment_fn, true_reg, true_rr, scale_y = True,
                 reg_hat[test], rr_hat[test] = reg.predict_reg(X[test]), rr.predict_riesz(X[test])
                 mom_reg[test], mom_rr[test] = moment_fn(X[test], reg.predict_reg), moment_fn(X[test], rr.predict_riesz)
 
-    rmse_reg = rmse_fn(reg_hat * scale + offset, true_reg(X))
-    r2_reg = 1 - (rmse_reg ** 2) / np.var(true_reg(X))
-    rmse_rr = rmse_fn(rr_hat, true_rr(X))
-    r2_rr = 1 - (rmse_rr ** 2) / np.var(true_rr(X))
-    ipsbias = np.mean((rr_hat - true_rr(X)) * true_reg(X))
-    drbias = np.mean((rr_hat - true_rr(X)) * (true_reg(X) - reg_hat * scale + offset))
+    reg_hat = _as_float_vector(reg_hat)
+    rr_hat = _as_float_vector(rr_hat)
+    mom_reg = _as_float_vector(mom_reg)
+    mom_rr = _as_float_vector(mom_rr)
+    reg_truth = _as_float_vector(true_reg(X))
+    rr_truth = _as_float_vector(true_rr(X))
+
+    rmse_reg = rmse_fn(reg_hat * scale + offset, reg_truth)
+    r2_reg = 1 - (rmse_reg ** 2) / np.var(reg_truth)
+    rmse_rr = rmse_fn(rr_hat, rr_truth)
+    r2_rr = 1 - (rmse_rr ** 2) / np.var(rr_truth)
+    ipsbias = np.mean((rr_hat - rr_truth) * reg_truth)
+    drbias = np.mean((rr_hat - rr_truth) * (reg_truth - reg_hat * scale + offset))
 
     # Return average moment and CI for all methods
     final_params = tuple(x * scale for method in methods
@@ -164,9 +180,10 @@ def get_est(W, *, moment_fn, true_reg, true_rr, gen_y, gen_T, sim = 1, oracle = 
             xfit = 0, multitasking = True, ForestRiesz_opt = {}, RFreg_opt = {}, RFrr_opt = {}, seed = 1234):
 
     np.random.seed(seed + sim)
-    X = np.hstack((gen_T(W), W))
-    y = gen_y(X)
-    truth = np.mean(moment_fn(X, true_reg))
+    W = _as_float_matrix(W)
+    X = _as_float_matrix(np.hstack((gen_T(W), W)))
+    y = _as_float_vector(gen_y(X))
+    truth = np.mean(_as_float_vector(moment_fn(X, true_reg)))
 
     return est_avgmom_RF(X, y, moment_fn, true_reg = true_reg, true_rr = true_rr, scale_y = scale_y,
                          xfit = xfit, multitasking = multitasking, oracle = oracle,
@@ -176,6 +193,7 @@ def get_est(W, *, moment_fn, true_reg, true_rr, gen_y, gen_T, sim = 1, oracle = 
 def sim_fun(W, *, moment_fn, true_reg, true_rr, gen_y, gen_T, N_sim = 100, oracle = '', scale_y = True, xfit = 0,
             multitasking = True, ForestRiesz_opt = {}, RFreg_opt = {}, RFrr_opt = {}, seed = 1234, verbose = 1,
             save = '', plot = True, saveplot = ''):
+    W = _as_float_matrix(W)
 
     res = Parallel(n_jobs = -1, verbose = verbose)(delayed(get_est)(W, moment_fn = moment_fn, true_reg = true_reg, true_rr = true_rr,
                                                                     gen_y = gen_y, gen_T = gen_T, sim = sim, oracle = oracle,
