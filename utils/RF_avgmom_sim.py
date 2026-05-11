@@ -192,15 +192,15 @@ def get_est(W, *, moment_fn, true_reg, true_rr, gen_y, gen_T, sim = 1, oracle = 
 
 def sim_fun(W, *, moment_fn, true_reg, true_rr, gen_y, gen_T, N_sim = 100, oracle = '', scale_y = True, xfit = 0,
             multitasking = True, ForestRiesz_opt = {}, RFreg_opt = {}, RFrr_opt = {}, seed = 1234, verbose = 1,
-            save = '', plot = True, saveplot = ''):
+            save = '', plot = True, saveplot = '', n_jobs = -1):
     W = _as_float_matrix(W)
 
-    res = Parallel(n_jobs = -1, verbose = verbose)(delayed(get_est)(W, moment_fn = moment_fn, true_reg = true_reg, true_rr = true_rr,
-                                                                    gen_y = gen_y, gen_T = gen_T, sim = sim, oracle = oracle,
-                                                                    scale_y = scale_y, xfit = xfit, multitasking = multitasking,
-                                                                    ForestRiesz_opt = ForestRiesz_opt, RFreg_opt = RFreg_opt,
-                                                                    RFrr_opt = RFrr_opt, seed = seed)
-                                                                    for sim in range(N_sim))
+    res = Parallel(n_jobs = n_jobs, verbose = verbose)(delayed(get_est)(W, moment_fn = moment_fn, true_reg = true_reg, true_rr = true_rr,
+                                                                         gen_y = gen_y, gen_T = gen_T, sim = sim, oracle = oracle,
+                                                                         scale_y = scale_y, xfit = xfit, multitasking = multitasking,
+                                                                         ForestRiesz_opt = ForestRiesz_opt, RFreg_opt = RFreg_opt,
+                                                                         RFrr_opt = RFrr_opt, seed = seed)
+                                                                         for sim in range(N_sim))
 
     res = tuple(np.array(x) for x in zip(*res))
     rmse_reg, r2_reg, rmse_rr, r2_rr, ipsbias, drbias, truth = res[-7:]
@@ -218,6 +218,7 @@ def sim_fun(W, *, moment_fn, true_reg, true_rr, gen_y, gen_T, N_sim = 100, oracl
         dump(to_save, save)
 
     if plot:
+        fig = plt.figure()
         #nuisance_str = ("reg RMSE: {:.3f}, R2: {:.3f}, rr RMSE: {:.3f}, R2: {:.3f}\n"
         #                "IPS orthogonality: {:.3f}, DR orthogonality: {:.3f}").format(np.mean(rmse_reg), np.mean(r2_reg),
         #                                                                       np.mean(rmse_rr), np.mean(r2_rr),
@@ -225,7 +226,7 @@ def sim_fun(W, *, moment_fn, true_reg, true_rr, gen_y, gen_T, N_sim = 100, oracl
         method_strs = ["{}. Bias: {:.3f}, RMSE: {:.3f}, Coverage: {:.3f}".format(method, d['bias'], d['rmse'], d['cov'])
                        for method, d in res_dict.items()]
         #plt.title("\n".join([nuisance_str] + method_strs))
-        plt.title(method_strs)
+        plt.title("\n".join(method_strs))
         plt.axvline(x = np.mean(truth), label='true', color='red')
         for method, d in res_dict.items():
             plt.hist(np.array(d['point']), alpha=.5, label=method)
@@ -235,3 +236,4 @@ def sim_fun(W, *, moment_fn, true_reg, true_rr, gen_y, gen_T, N_sim = 100, oracl
         if saveplot != '':
             plt.savefig(saveplot, bbox_inches='tight')
         plt.show()
+        plt.close(fig)

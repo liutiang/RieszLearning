@@ -109,9 +109,11 @@ def est_avgmom_NN(X, y, moment_fn, n_hidden, drop_prob, true_reg, true_rr, scale
 
 # 2. Simulations
 def get_est(W, *, moment_fn, n_hidden, drop_prob, true_reg, true_rr, gen_y, gen_T, sim = 1, scale_y = True, 
-            fast_train_opt = {}, train_opt = {}, seed = 1234):
+            fast_train_opt = {}, train_opt = {}, seed = 1234, torch_num_threads = None):
 
     np.random.seed(seed + sim)
+    if torch_num_threads is not None:
+        torch.set_num_threads(torch_num_threads)
     X = np.hstack((gen_T(W), W))
     y = gen_y(X)
     truth = np.mean(moment_fn(X, true_reg, device = None))
@@ -121,13 +123,14 @@ def get_est(W, *, moment_fn, n_hidden, drop_prob, true_reg, true_rr, gen_y, gen_
 
 
 def sim_fun(W, *, moment_fn, n_hidden, drop_prob, true_reg, true_rr, gen_y, gen_T, N_sim = 100, scale_y = True, 
-            fast_train_opt = {}, train_opt = {}, seed = 1234, verbose = 1, save = '', plot = True, saveplot = ''):
+            fast_train_opt = {}, train_opt = {}, seed = 1234, verbose = 1, save = '', plot = True, saveplot = '',
+            parallel_n_jobs = -1, torch_num_threads = None):
     
-    res = Parallel(n_jobs = -1, verbose = verbose)(delayed(get_est)(W, moment_fn = moment_fn, n_hidden = n_hidden, drop_prob = drop_prob, 
+    res = Parallel(n_jobs = parallel_n_jobs, verbose = verbose)(delayed(get_est)(W, moment_fn = moment_fn, n_hidden = n_hidden, drop_prob = drop_prob, 
                                                                     true_reg = true_reg, true_rr = true_rr,
                                                                     gen_y = gen_y, gen_T = gen_T, sim = sim, scale_y = scale_y, 
                                                                     fast_train_opt = fast_train_opt, train_opt = train_opt,
-                                                                    seed = seed) for sim in range(N_sim))
+                                                                    seed = seed, torch_num_threads = torch_num_threads) for sim in range(N_sim))
 
     res = tuple(np.array(x) for x in zip(*res))
     rmse_reg, r2_reg, rmse_rr, r2_rr, ipsbias, drbias, truth = res[-7:]
@@ -162,3 +165,4 @@ def sim_fun(W, *, moment_fn, n_hidden, drop_prob, true_reg, true_rr, gen_y, gen_
         if saveplot != '':
             plt.savefig(saveplot, bbox_inches='tight')
         plt.show()
+        plt.close()

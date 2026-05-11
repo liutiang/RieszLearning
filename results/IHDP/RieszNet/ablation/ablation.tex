@@ -1,0 +1,12 @@
+\begin{tabular}{*{10}{r}} 
+\toprule 
+& \multicolumn{3}{c}{Direct} & \multicolumn{3}{c}{IPS} & \multicolumn{3}{c}{DR} \\ 
+\cmidrule(lr){2-4} \cmidrule(lr){5-7} \cmidrule(lr){8-10} 
+&  Bias &  RMSE &  Cov. &  Bias &  RMSE &  Cov. &  Bias &  RMSE &  Cov. \\ 
+\midrule 
+RieszNet & -0.003 & 0.200 & 0.750 & -0.653 & 1.036 & 0.750 & -0.051 & 0.135 & 0.950 \\ 
+Separate NNs & -0.102 & 0.169 & 0.630 & -0.119 & 1.969 & 0.740 & -0.152 & 0.378 & 0.850 \\ 
+No end-to-end & -12.532 & 125.996 & 0.190 & 0.003 & 1.344 & 0.780 & -12.560 & 126.153 & 0.740 \\ 
+TMLE post-proc. & -0.062 & 0.164 & 0.670 & -0.603 & 1.031 & 0.760 & -0.062 & 0.164 & 0.970 \\ 
+\bottomrule 
+ \end{tabular}

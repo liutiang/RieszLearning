@@ -1,0 +1,26 @@
+\begin{tabular}{*{11}{r}} 
+\toprule 
+&& \multicolumn{3}{c}{Direct} & \multicolumn{3}{c}{IPS} & \multicolumn{3}{c}{DR} \\ 
+\cmidrule(lr){3-5} \cmidrule(lr){6-8} \cmidrule(lr){9-11} 
+reg $R^2$ &  rr $R^2$ &  Bias &  RMSE &  Cov. &  Bias &  RMSE &  Cov. &  Bias &  RMSE &  Cov. \\ 
+\midrule 
+\addlinespace 
+ \multicolumn{11}{l}{\textbf{1. Simple $f$}} \\ 
+0.965 & 0.886 & 0.004 & 0.051 & 0.073 & 0.027 & 0.050 & 0.909 & 0.005 & 0.042 & 0.934 \\ 
+\addlinespace 
+ \multicolumn{11}{l}{\textbf{2. Simple $f$ with linear confound.}} \\ 
+0.804 & 0.885 & 0.037 & 0.628 & 0.077 & 0.076 & 0.496 & 0.928 & 0.060 & 0.501 & 0.903 \\ 
+\addlinespace 
+ \multicolumn{11}{l}{\textbf{3. Simple $f$ with linear and non-linear confound.}} \\ 
+0.770 & 0.886 & 0.056 & 0.646 & 0.082 & 0.068 & 0.500 & 0.938 & 0.058 & 0.508 & 0.903 \\ 
+\addlinespace 
+ \multicolumn{11}{l}{\textbf{4. Complex $f$}} \\ 
+0.938 & 0.887 & 0.005 & 0.069 & 0.131 & 0.028 & 0.060 & 0.930 & 0.009 & 0.053 & 0.935 \\ 
+\addlinespace 
+ \multicolumn{11}{l}{\textbf{5. Complex $f$ with linear confound.}} \\ 
+0.805 & 0.886 & 0.053 & 0.628 & 0.083 & 0.080 & 0.499 & 0.934 & 0.067 & 0.507 & 0.903 \\ 
+\addlinespace 
+ \multicolumn{11}{l}{\textbf{6. Complex $f$ with linear and non-linear confound.}} \\ 
+0.770 & 0.885 & 0.045 & 0.664 & 0.061 & 0.068 & 0.507 & 0.926 & 0.059 & 0.512 & 0.889 \\ 
+\bottomrule 
+ \end{tabular}
