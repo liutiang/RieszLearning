@@ -1,0 +1,13 @@
+\begin{tabular}{lrrr} 
+\toprule 
+& \multicolumn{3}{c}{DR} \\ 
+\cmidrule(lr){2-4} 
+&  Bias &  RMSE &  Cov. \\ 
+\midrule 
+Default & -0.058 & 0.148 & 0.950 \\ 
+10x learning rates & -0.126 & 0.527 & 0.850 \\ 
+1/10 learning rates & -0.085 & 0.303 & 0.540 \\ 
+10x target_reg + riesz_weight & -0.070 & 0.170 & 0.940 \\ 
+1/10 target_reg + riesz_weight & -0.066 & 0.169 & 0.710 \\ 
+\bottomrule 
+ \end{tabular}

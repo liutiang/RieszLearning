@@ -28,6 +28,7 @@ MAE_METHODS = ["dr", "direct", "ips"]
 MAE_METHOD_LABELS = ["DR", "Direct", "IPS"]
 ABLATION_TABLE_METHODS = ["direct", "ips", "dr"]
 SRR_MAP = {"dr": True, "direct": False, "ips": True}
+ROBUSTNESS_METHODS = ["dr"]
 
 MAE_BASE_DIR = Path("./results/IHDP/RieszNet/MAE")
 MAE_SHARD_DIR = MAE_BASE_DIR / "shards"
@@ -35,7 +36,17 @@ COVERAGE_BASE_DIR = Path("./results/IHDP/RieszNet/coverage")
 COVERAGE_SHARD_DIR = COVERAGE_BASE_DIR / "shards"
 ABLATION_BASE_DIR = Path("./results/IHDP/RieszNet/ablation")
 ABLATION_SHARD_DIR = ABLATION_BASE_DIR / "shards"
+ROBUSTNESS_BASE_DIR = Path("./results/IHDP/RieszNet/robustness")
+ROBUSTNESS_SHARD_DIR = ROBUSTNESS_BASE_DIR / "shards"
 MODEL_DIR = Path.cwd() / ".riesznet_models" / "ihdp"
+
+ROBUSTNESS_VARIANTS = [
+    ("baseline", "Default"),
+    ("ten_x_lr", "10x learning rates"),
+    ("one_tenth_lr", "1/10 learning rates"),
+    ("ten_x_weights", "10x target_reg + riesz_weight"),
+    ("one_tenth_weights", "1/10 target_reg + riesz_weight"),
+]
 
 
 def rmse_fn(y_pred, y_true):
@@ -339,6 +350,68 @@ def build_train_options(args):
     return main_fast, main_train, rr_fast, rr_train
 
 
+def scale_main_learning_rates(fast_cfg, train_cfg, factor):
+    scaled_fast = fast_cfg.copy()
+    scaled_train = train_cfg.copy()
+    scaled_fast["learner_lr"] *= factor
+    scaled_train["learner_lr"] *= factor
+    return scaled_fast, scaled_train
+
+
+def build_robustness_variants(args, main_fast_cfg, main_train_cfg):
+    lr_fast_cfg, lr_train_cfg = scale_main_learning_rates(main_fast_cfg, main_train_cfg, 10.0)
+    low_lr_fast_cfg, low_lr_train_cfg = scale_main_learning_rates(
+        main_fast_cfg, main_train_cfg, 0.1
+    )
+    return [
+        {
+            "name": "baseline",
+            "label": "Default",
+            "n_hidden": args.n_hidden,
+            "target_reg": args.target_reg,
+            "riesz_weight": args.riesz_weight,
+            "fast_cfg": main_fast_cfg.copy(),
+            "train_cfg": main_train_cfg.copy(),
+        },
+        {
+            "name": "ten_x_lr",
+            "label": "10x learning rates",
+            "n_hidden": args.n_hidden,
+            "target_reg": args.target_reg,
+            "riesz_weight": args.riesz_weight,
+            "fast_cfg": lr_fast_cfg,
+            "train_cfg": lr_train_cfg,
+        },
+        {
+            "name": "one_tenth_lr",
+            "label": "1/10 learning rates",
+            "n_hidden": args.n_hidden,
+            "target_reg": args.target_reg,
+            "riesz_weight": args.riesz_weight,
+            "fast_cfg": low_lr_fast_cfg,
+            "train_cfg": low_lr_train_cfg,
+        },
+        {
+            "name": "ten_x_weights",
+            "label": "10x target_reg + riesz_weight",
+            "n_hidden": args.n_hidden,
+            "target_reg": args.target_reg * 10.0,
+            "riesz_weight": args.riesz_weight * 10.0,
+            "fast_cfg": main_fast_cfg.copy(),
+            "train_cfg": main_train_cfg.copy(),
+        },
+        {
+            "name": "one_tenth_weights",
+            "label": "1/10 target_reg + riesz_weight",
+            "n_hidden": args.n_hidden,
+            "target_reg": args.target_reg * 0.1,
+            "riesz_weight": args.riesz_weight * 0.1,
+            "fast_cfg": main_fast_cfg.copy(),
+            "train_cfg": main_train_cfg.copy(),
+        },
+    ]
+
+
 def fit_riesznet(
     learner,
     moment_fn,
@@ -423,7 +496,20 @@ def scale_outcome(y):
     return y_scaled, float(y_scaler.scale_[0])
 
 
-def run_standard_experiment(simulation_file, sim_seed, args, fast_cfg, train_cfg, *, device, target_reg, riesz_weight, prediction_kwargs):
+def run_standard_experiment(
+    simulation_file,
+    sim_seed,
+    args,
+    fast_cfg,
+    train_cfg,
+    *,
+    device,
+    target_reg,
+    riesz_weight,
+    prediction_kwargs,
+    n_hidden=None,
+    methods=None,
+):
     set_all_seeds(sim_seed)
     X, y, true_ate = load_ihdp_sample(simulation_file)
     y_scaled, y_scale = scale_outcome(y)
@@ -432,7 +518,9 @@ def run_standard_experiment(simulation_file, sim_seed, args, fast_cfg, train_cfg
     )
 
     torch.cuda.empty_cache()
-    learner = Learner(X_train.shape[1], args.n_hidden, args.drop_prob, 0, interaction_only=True)
+    hidden_units = args.n_hidden if n_hidden is None else n_hidden
+    methods = MAE_METHODS if methods is None else methods
+    learner = Learner(X_train.shape[1], hidden_units, args.drop_prob, 0, interaction_only=True)
     agmm = fit_riesznet(
         learner,
         ate_moment_fn,
@@ -449,7 +537,7 @@ def run_standard_experiment(simulation_file, sim_seed, args, fast_cfg, train_cfg
     params = (
         tuple(
             value * y_scale
-            for method in MAE_METHODS
+            for method in methods
             for value in agmm.predict_avg_moment(
                 X,
                 y_scaled,
@@ -754,6 +842,76 @@ def simulate_coverage_and_ablation(shards, n_shards, args, main_fast_cfg, main_t
         )
 
 
+def run_robustness_shard(simulation_files, *, shard, n_shards, args, variants, device):
+    shard_members = get_shard_members(len(simulation_files), n_shards, shard)
+    shard_files = [simulation_files[i] for i in shard_members]
+    print(f"[robustness] shard {shard + 1}/{n_shards} running {len(shard_members)} datasets")
+
+    results = []
+    for idx, simulation_file in enumerate(shard_files, start=1):
+        global_idx = shard_members[idx - 1]
+        sim_seed = args.base_seed + 50_000 + global_idx
+        print(
+            f"[robustness] shard {shard + 1}/{n_shards} dataset {idx}/{len(shard_files)}: "
+            f"{Path(simulation_file).name}"
+        )
+        dataset_results = {}
+        for variant in variants:
+            print(
+                f"[robustness] shard {shard + 1}/{n_shards} dataset {idx}/{len(shard_files)} "
+                f"variant={variant['name']}"
+            )
+            dataset_results[variant["name"]] = run_standard_experiment(
+                simulation_file,
+                sim_seed,
+                args,
+                variant["fast_cfg"],
+                variant["train_cfg"],
+                device=device,
+                target_reg=variant["target_reg"],
+                riesz_weight=variant["riesz_weight"],
+                prediction_kwargs={"srr": SRR_MAP},
+                n_hidden=variant["n_hidden"],
+                methods=ROBUSTNESS_METHODS,
+            )
+        results.append(dataset_results)
+
+    output_path = ROBUSTNESS_SHARD_DIR / f"robustness_shard_{shard}.joblib"
+    ensure_dir(output_path.parent)
+    dump(
+        {
+            "label": "robustness",
+            "shard": shard,
+            "n_shards": n_shards,
+            "simulation_files": shard_files,
+            "simulation_file_indices": shard_members,
+            "methods": ROBUSTNESS_METHODS,
+            "variants": [{"name": name, "label": label} for name, label in ROBUSTNESS_VARIANTS],
+            "results": results,
+        },
+        output_path,
+    )
+    print(f"[robustness] wrote shard output to {output_path}")
+
+
+def simulate_robustness(shards, n_shards, args, main_fast_cfg, main_train_cfg, device):
+    files = select_simulation_files(
+        "./data/IHDP/sim_data_redraw_T", args.redraw_nsims, args.base_seed
+    )
+    ensure_dir(ROBUSTNESS_SHARD_DIR)
+    variants = build_robustness_variants(args, main_fast_cfg, main_train_cfg)
+
+    for shard in shards:
+        run_robustness_shard(
+            files,
+            shard=shard,
+            n_shards=n_shards,
+            args=args,
+            variants=variants,
+            device=device,
+        )
+
+
 def write_mae_table(res_dict):
     ensure_dir(MAE_BASE_DIR)
     with open(MAE_BASE_DIR / "IHDP_MAE_NN.tex", "w") as f:
@@ -843,6 +1001,33 @@ def write_ablation_table():
         f.write("\\bottomrule \n \\end{tabular}")
 
 
+def write_robustness_table(summary):
+    ensure_dir(ROBUSTNESS_BASE_DIR)
+    with open(ROBUSTNESS_BASE_DIR / "IHDP_robustness.tex", "w") as f:
+        f.write(
+            "\\begin{tabular}{lrrr} \n"
+            "\\toprule \n"
+            "& \\multicolumn{3}{c}{DR} \\\\ \n"
+            "\\cmidrule(lr){2-4} \n"
+            "&  Bias &  RMSE &  Cov. \\\\ \n"
+            "\\midrule \n"
+        )
+
+        for variant_name, variant_label in ROBUSTNESS_VARIANTS:
+            f.write(variant_label + " & ")
+            f.write(
+                " & ".join(
+                    [
+                        "{:.3f}".format(float(summary[variant_name]["dr"][metric]))
+                        for metric in ["bias", "rmse", "cov"]
+                    ]
+                )
+                + " \\\\ \n"
+            )
+
+        f.write("\\bottomrule \n \\end{tabular}")
+
+
 def summarize_mae(shards):
     results = load_shard_results(MAE_SHARD_DIR, "mae", shards)
     res_dict, _ = summarize_results(results, MAE_METHODS, metric_mode="mae")
@@ -894,15 +1079,51 @@ def summarize_ablation_variant(shards, prefix, output_name):
         )
 
 
+def summarize_robustness(shards):
+    dataset_results = load_shard_results(ROBUSTNESS_SHARD_DIR, "robustness", shards)
+    summary = {}
+
+    for variant_name, variant_label in ROBUSTNESS_VARIANTS:
+        variant_results = [result[variant_name] for result in dataset_results]
+        summary[variant_name], _ = summarize_results(
+            variant_results, ROBUSTNESS_METHODS, metric_mode="coverage"
+        )
+        print(
+            "{} [{}] : bias = {:.3f}, rmse = {:.3f}, cov = {:.3f}".format(
+                "dr",
+                variant_label,
+                summary[variant_name]["dr"]["bias"],
+                summary[variant_name]["dr"]["rmse"],
+                summary[variant_name]["dr"]["cov"],
+            )
+        )
+
+    ensure_dir(ROBUSTNESS_BASE_DIR)
+    dump(
+        {
+            "methods": ROBUSTNESS_METHODS,
+            "variants": [{"name": name, "label": label} for name, label in ROBUSTNESS_VARIANTS],
+            "summary": summary,
+        },
+        ROBUSTNESS_BASE_DIR / "IHDP_robustness.joblib",
+    )
+    write_robustness_table(summary)
+
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Cluster-friendly Python script version of RieszNet_IHDP.ipynb."
     )
     parser.add_argument(
         "--mode",
-        choices=["all", "simulate", "summarize"],
+        choices=["all", "simulate", "summarize", "robustness"],
         default="all",
-        help="all: run shard simulations then summarize; simulate: run only selected shards; summarize: build final outputs from shard files.",
+        help=(
+            "all: run existing simulations/summaries plus robustness; "
+            "simulate: run only the existing shard simulations; "
+            "summarize: build the existing aggregate outputs from shard files; "
+            "robustness: with --shard run robustness shard simulations, otherwise summarize robustness shard outputs."
+        ),
     )
     parser.add_argument(
         "--shard",
@@ -1026,6 +1247,26 @@ def main():
             "IHDP_separateNNs_ablation.joblib",
         )
         write_ablation_table()
+
+    if args.mode in ["all", "robustness"]:
+        if args.mode == "all" or args.shard is not None:
+            robustness_shards = resolve_shards(
+                args.shard, args.shard_start, args.shard_end, args.n_shards
+            )
+            simulate_robustness(
+                robustness_shards,
+                args.n_shards,
+                args,
+                main_fast_cfg,
+                main_train_cfg,
+                device,
+            )
+
+        if args.mode == "all" or args.shard is None:
+            aggregate_shards = resolve_shards(
+                None, args.aggregate_shard_start, args.aggregate_shard_end, args.n_shards
+            )
+            summarize_robustness(aggregate_shards)
 
 
 if __name__ == "__main__":
