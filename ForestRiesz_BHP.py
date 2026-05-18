@@ -614,28 +614,11 @@ def parse_args():
         default=-1,
         help="Parallel jobs for Monte Carlo replications. Positive values also pin each forest fit to one worker to avoid nested oversubscription.",
     )
-    parser.add_argument(
-        "--smoke-test",
-        action="store_true",
-        help="Run a fast end-to-end check with 1 sim, 1 design, 1 xfit config, no plots, and 10 trees unless explicitly overridden.",
-    )
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
-
-    if args.smoke_test:
-        if args.n_sim == 100:
-            args.n_sim = 1
-        if args.max_designs is None and args.task_index is None and args.task_end is None:
-            args.max_designs = 1
-        if args.max_xfit_mult is None and args.task_index is None and args.task_end is None:
-            args.max_xfit_mult = 1
-        if not args.no_plot:
-            args.no_plot = True
-        if args.n_estimators is None:
-            args.n_estimators = 10
 
     use_task_mode = args.task_index is not None or args.task_end is not None
 

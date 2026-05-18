@@ -1168,11 +1168,6 @@ def parse_args():
         action="store_true",
         help="Skip histogram generation during summarize/all runs.",
     )
-    parser.add_argument(
-        "--smoke-test",
-        action="store_true",
-        help="Run a fast end-to-end check with tiny shard counts and shorter training.",
-    )
     return parser.parse_args()
 
 
@@ -1181,28 +1176,6 @@ def main():
 
     if args.torch_num_threads is None and "SLURM_CPUS_PER_TASK" in os.environ:
         args.torch_num_threads = int(os.environ["SLURM_CPUS_PER_TASK"])
-
-    if args.smoke_test:
-        if args.mae_nsims == 1000:
-            args.mae_nsims = 2
-        if args.redraw_nsims == 100:
-            args.redraw_nsims = 2
-        if args.n_hidden == 100:
-            args.n_hidden = 20
-        if args.fast_n_epochs == 100:
-            args.fast_n_epochs = 2
-        if args.train_n_epochs == 600:
-            args.train_n_epochs = 3
-        if args.fast_earlystop_rounds == 2:
-            args.fast_earlystop_rounds = 1
-        if args.train_earlystop_rounds == 40:
-            args.train_earlystop_rounds = 1
-        if args.shard is None and args.shard_end == 9 and args.n_shards == 1:
-            args.shard_end = 0
-        if args.aggregate_shard_end == 9 and args.n_shards == 1:
-            args.aggregate_shard_end = 0
-        if not args.no_plot:
-            args.no_plot = True
 
     configure_torch(args.torch_num_threads)
     ensure_dir(MODEL_DIR)

@@ -380,11 +380,6 @@ def parse_args():
         action="store_true",
         help="Skip histogram generation during summarize/all runs.",
     )
-    parser.add_argument(
-        "--smoke-test",
-        action="store_true",
-        help="Run a fast end-to-end check with tiny simulation counts and smaller forests.",
-    )
     return parser.parse_args()
 
 
@@ -393,22 +388,6 @@ def main():
 
     if args.n_jobs is None:
         args.n_jobs = int(os.environ.get("SLURM_CPUS_PER_TASK", "1"))
-
-    if args.smoke_test:
-        if args.mae_nsims == 1000:
-            args.mae_nsims = 2
-        if args.coverage_nsims == 100:
-            args.coverage_nsims = 2
-        if args.mae_n_estimators == 1000:
-            args.mae_n_estimators = 20
-        if args.coverage_n_estimators == 100:
-            args.coverage_n_estimators = 20
-        if not args.no_plot:
-            args.no_plot = True
-        if args.shard is None and args.shard_end == 9 and args.n_shards == 1:
-            args.shard_end = 0
-        if args.aggregate_shard_end == 9 and args.n_shards == 1:
-            args.aggregate_shard_end = 0
 
     if args.mode in ["all", "simulate"]:
         simulate_shards = resolve_shards(

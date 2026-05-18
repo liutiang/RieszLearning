@@ -380,7 +380,6 @@ def parse_args():
         default=None,
         help="Number of CPU threads used inside each PyTorch worker. Defaults to 1 when running under Slurm, otherwise leaves PyTorch defaults unchanged.",
     )
-    parser.add_argument("--smoke-test", action="store_true")
     return parser.parse_args()
 
 
@@ -397,30 +396,6 @@ def main():
         torch.set_num_threads(args.torch_num_threads)
         if hasattr(torch, "set_num_interop_threads"):
             torch.set_num_interop_threads(1)
-
-    if args.smoke_test:
-        if args.n_sim == 100:
-            args.n_sim = 1
-        if args.max_designs is None:
-            args.max_designs = 1
-        if not args.no_plot:
-            args.no_plot = True
-        if args.n_hidden == 100:
-            args.n_hidden = 20
-        if args.fast_n_epochs == 100:
-            args.fast_n_epochs = 2
-        if args.train_n_epochs == 300:
-            args.train_n_epochs = 3
-        if args.fast_earlystop_rounds == 2:
-            args.fast_earlystop_rounds = 1
-        if args.train_earlystop_rounds == 20:
-            args.train_earlystop_rounds = 1
-        if args.treatment_n_estimators == 100:
-            args.treatment_n_estimators = 10
-        if args.parallel_jobs is None or args.parallel_jobs > 1:
-            args.parallel_jobs = 1
-        if args.parallel_verbose == 1:
-            args.parallel_verbose = 0
 
     if args.seed is None:
         run_seeds = list(range(args.seed_start, args.seed_end + 1))
