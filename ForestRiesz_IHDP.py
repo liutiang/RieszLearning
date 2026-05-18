@@ -32,7 +32,7 @@ def rmse_fn(y_pred, y_true):
     return np.sqrt(np.mean((y_pred - y_true) ** 2))
 
 
-def forest_riesz_ate_options(n_estimators, n_jobs):
+def forest_riesz_ate_options(n_estimators, n_jobs, base_seed):
     return {
         "criterion": "het",
         "n_estimators": n_estimators,
@@ -48,7 +48,7 @@ def forest_riesz_ate_options(n_estimators, n_jobs):
         "honest": True,
         "verbose": 0,
         "n_jobs": n_jobs,
-        "random_state": 123,
+        "random_state": base_seed,
     }
 
 
@@ -56,14 +56,14 @@ def ensure_dir(path):
     Path(path).mkdir(parents=True, exist_ok=True)
 
 
-def select_simulation_files(data_base_dir, nsims, *, double_draw=False):
+def select_simulation_files(data_base_dir, nsims, *, base_seed=123, double_draw=False):
     simulation_files = sorted(glob.glob(f"{data_base_dir}/*.csv"))
     if nsims > len(simulation_files):
         raise ValueError(
             f"Requested nsims={nsims}, but only found {len(simulation_files)} files in {data_base_dir}."
         )
 
-    rng = np.random.RandomState(123)
+    rng = np.random.RandomState(base_seed)
     sim_ids = rng.choice(len(simulation_files), nsims, replace=False)
     if double_draw:
         # Preserve the notebook's second sampling pass in the coverage section.
@@ -239,9 +239,11 @@ def write_coverage_plot(res_dict, truth):
     plt.close()
 
 
-def simulate_mae(shards, n_shards, nsims, n_estimators, n_jobs):
-    selected_files = select_simulation_files("./data/IHDP/sim_data", nsims)
-    est_options = forest_riesz_ate_options(n_estimators=n_estimators, n_jobs=n_jobs)
+def simulate_mae(shards, n_shards, nsims, n_estimators, n_jobs, base_seed):
+    selected_files = select_simulation_files("./data/IHDP/sim_data", nsims, base_seed=base_seed)
+    est_options = forest_riesz_ate_options(
+        n_estimators=n_estimators, n_jobs=n_jobs, base_seed=base_seed
+    )
     ensure_dir(MAE_SHARD_DIR)
 
     for shard in shards:
@@ -256,11 +258,13 @@ def simulate_mae(shards, n_shards, nsims, n_estimators, n_jobs):
         )
 
 
-def simulate_coverage(shards, n_shards, nsims, n_estimators, n_jobs):
+def simulate_coverage(shards, n_shards, nsims, n_estimators, n_jobs, base_seed):
     selected_files = select_simulation_files(
-        "./data/IHDP/sim_data_redraw_T", nsims, double_draw=True
+        "./data/IHDP/sim_data_redraw_T", nsims, base_seed=base_seed, double_draw=True
     )
-    est_options = forest_riesz_ate_options(n_estimators=n_estimators, n_jobs=n_jobs)
+    est_options = forest_riesz_ate_options(
+        n_estimators=n_estimators, n_jobs=n_jobs, base_seed=base_seed
+    )
     ensure_dir(COVERAGE_SHARD_DIR)
 
     for shard in shards:
@@ -346,6 +350,12 @@ def parse_args():
         "--n-shards", type=int, default=10, help="Total number of shards used for the simulation."
     )
     parser.add_argument(
+        "--base-seed",
+        type=int,
+        default=123,
+        help="Base random seed used for IHDP dataset sampling and forest randomness.",
+    )
+    parser.add_argument(
         "--mae-nsims",
         type=int,
         default=1000,
@@ -399,6 +409,7 @@ def main():
             args.mae_nsims,
             args.mae_n_estimators,
             args.n_jobs,
+            args.base_seed,
         )
         simulate_coverage(
             simulate_shards,
@@ -406,6 +417,7 @@ def main():
             args.coverage_nsims,
             args.coverage_n_estimators,
             args.n_jobs,
+            args.base_seed,
         )
 
     if args.mode in ["all", "summarize"]:
