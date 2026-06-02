@@ -50,7 +50,7 @@ ForestRiesz_opt = {
     "honest": True,
     "verbose": 0,
     "n_jobs": -1,
-    "random_state": 123,
+    "random_state": 572,
 }
 
 # RFreg Settings
@@ -71,7 +71,7 @@ RFreg_opt = {
     "honest": True,
     "verbose": 0,
     "n_jobs": -1,
-    "random_state": 123,
+    "random_state": 572,
 }
 
 # RFrr Settings
@@ -93,7 +93,7 @@ RFrr_opt = {
     "honest": True,
     "verbose": 0,
     "n_jobs": -1,
-    "random_state": 123,
+    "random_state": 572,
 }
 
 
@@ -144,7 +144,7 @@ def fit_treatment_models(W, T, n_estimators=100, n_jobs=None):
     mu_T = RandomForestRegressor(
         n_estimators=n_estimators,
         min_samples_leaf=50,
-        random_state=123,
+        random_state=572,
         n_jobs=n_jobs,
     )
     mu_T.fit(W, T)
@@ -154,7 +154,7 @@ def fit_treatment_models(W, T, n_estimators=100, n_jobs=None):
         n_estimators=n_estimators,
         min_samples_leaf=50,
         max_depth=5,
-        random_state=123,
+        random_state=572,
         n_jobs=n_jobs,
     )
     e_T = T - cross_val_predict(mu_T, W, T)
@@ -497,32 +497,29 @@ def write_histograms(aggregate_seeds):
                     res[method]["rmse"].append(loaded[0][method]["rmse"])
                     res[method]["cov"].append(loaded[0][method]["cov"])
 
-            nuisance_str = (
-                "reg RMSE: {:.3f}, R2: {:.3f}, rr RMSE: {:.3f}, R2: {:.3f}\n"
-                "IPS orthogonality: {:.3f}, DR orthogonality: {:.3f}"
-            ).format(
-                np.mean(rmse_reg),
-                np.mean(r2_reg),
-                np.mean(rmse_rr),
-                np.mean(r2_rr),
-                np.mean(ipsbias),
-                np.mean(drbias),
-            )
+            plot_methods = ["dr", "reg", "ips", "tmle"]
             method_strs = [
                 "{}. Bias: {:.3f}, RMSE: {:.3f}, Coverage: {:.3f}".format(
                     method,
-                    np.mean(d["bias"]),
-                    np.mean(d["rmse"]),
-                    np.mean(d["cov"]),
+                    np.mean(res[method]["bias"]),
+                    np.mean(res[method]["rmse"]),
+                    np.mean(res[method]["cov"]),
                 )
-                for method, d in res.items()
+                for method in plot_methods
             ]
             fig = plt.figure()
-            plt.title("\n".join([nuisance_str] + method_strs))
-            for method, d in res.items():
+            plt.title("\n".join(method_strs))
+            for method in plot_methods:
+                d = res[method]
                 plt.hist(np.array(d["point"]), alpha=0.5, label=method)
             plt.axvline(x=np.mean(truth), label="true", color="red")
-            plt.legend()
+            handles, labels = plt.gca().get_legend_handles_labels()
+            label_to_handle = dict(zip(labels, handles))
+            legend_order = ["true"] + plot_methods
+            plt.legend(
+                [label_to_handle[label] for label in legend_order],
+                legend_order,
+            )
             nameplot = path + "/xfit_" + str(xfit) + "_mult_" + str(int(mult)) + "_all.pdf"
             plt.savefig(nameplot, bbox_inches="tight")
             plt.show()

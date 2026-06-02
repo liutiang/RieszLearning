@@ -56,7 +56,7 @@ def ensure_dir(path):
     Path(path).mkdir(parents=True, exist_ok=True)
 
 
-def select_simulation_files(data_base_dir, nsims, *, base_seed=123, double_draw=False):
+def select_simulation_files(data_base_dir, nsims, *, base_seed=572, double_draw=False):
     simulation_files = sorted(glob.glob(f"{data_base_dir}/*.csv"))
     if nsims > len(simulation_files):
         raise ValueError(
