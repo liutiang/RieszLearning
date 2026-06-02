@@ -152,16 +152,28 @@ def sim_fun(W, *, moment_fn, n_hidden, drop_prob, true_reg, true_rr, gen_y, gen_
         #                "IPS orthogonality: {:.3f}, DR orthogonality: {:.3f}").format(np.mean(rmse_reg), np.mean(r2_reg),
         #                                                                       np.mean(rmse_rr), np.mean(r2_rr),
         #                                                                       np.mean(ipsbias), np.mean(drbias))
-        method_strs = ["{}. Bias: {:.3f}, RMSE: {:.3f}, Coverage: {:.3f}".format(method, d['bias'], d['rmse'], d['cov'])
-                       for method, d in res_dict.items()]
+        plot_methods = ["dr", "direct", "ips"]
+        method_strs = [
+            "{}. Bias: {:.3f}, RMSE: {:.3f}, Coverage: {:.3f}".format(
+                method, res_dict[method]['bias'], res_dict[method]['rmse'], res_dict[method]['cov']
+            )
+            for method in plot_methods
+        ]
         #plt.title("\n".join([nuisance_str] + method_strs))
         plt.title("\n".join(method_strs))
         plt.axvline(x = np.mean(truth), label='true', color='red')
-        for method, d in res_dict.items():
+        for method in plot_methods:
+            d = res_dict[method]
             plt.hist(np.array(d['point']), alpha=.5, label=method)
         plt.xlabel("estimates")
         plt.ylabel("frequency")
-        plt.legend()
+        handles, labels = plt.gca().get_legend_handles_labels()
+        label_to_handle = dict(zip(labels, handles))
+        legend_order = ["true"] + plot_methods
+        plt.legend(
+            [label_to_handle[label] for label in legend_order],
+            legend_order,
+        )
         if saveplot != '':
             plt.savefig(saveplot, bbox_inches='tight')
         plt.show()

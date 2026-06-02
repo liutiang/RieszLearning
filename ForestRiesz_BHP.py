@@ -497,10 +497,11 @@ def write_histograms(aggregate_seeds):
                     res[method]["rmse"].append(loaded[0][method]["rmse"])
                     res[method]["cov"].append(loaded[0][method]["cov"])
 
-            plot_methods = ["dr", "reg", "ips", "tmle"]
+            plot_methods = ["dr", "reg", "ips"]
+            plot_labels = {"dr": "dr", "reg": "direct", "ips": "ips"}
             method_strs = [
                 "{}. Bias: {:.3f}, RMSE: {:.3f}, Coverage: {:.3f}".format(
-                    method,
+                    plot_labels[method],
                     np.mean(res[method]["bias"]),
                     np.mean(res[method]["rmse"]),
                     np.mean(res[method]["cov"]),
@@ -511,11 +512,11 @@ def write_histograms(aggregate_seeds):
             plt.title("\n".join(method_strs))
             for method in plot_methods:
                 d = res[method]
-                plt.hist(np.array(d["point"]), alpha=0.5, label=method)
+                plt.hist(np.array(d["point"]), alpha=0.5, label=plot_labels[method])
             plt.axvline(x=np.mean(truth), label="true", color="red")
             handles, labels = plt.gca().get_legend_handles_labels()
             label_to_handle = dict(zip(labels, handles))
-            legend_order = ["true"] + plot_methods
+            legend_order = ["true"] + [plot_labels[method] for method in plot_methods]
             plt.legend(
                 [label_to_handle[label] for label in legend_order],
                 legend_order,

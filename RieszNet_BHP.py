@@ -309,18 +309,26 @@ def write_histograms(aggregate_seeds):
             np.mean(ipsbias),
             np.mean(drbias),
         )
+        plot_methods = ["dr", "direct", "ips"]
         method_strs = [
             "{}. Bias: {:.3f}, RMSE: {:.3f}, Coverage: {:.3f}".format(
-                method, np.mean(d["bias"]), np.mean(d["rmse"]), np.mean(d["cov"])
+                method, np.mean(res[method]["bias"]), np.mean(res[method]["rmse"]), np.mean(res[method]["cov"])
             )
-            for method, d in res.items()
+            for method in plot_methods
         ]
         plt.figure()
         plt.title("\n".join([nuisance_str] + method_strs))
-        for method, d in res.items():
+        for method in plot_methods:
+            d = res[method]
             plt.hist(np.array(d["point"]), alpha=0.5, label=method)
         plt.axvline(x=np.mean(truth), label="true", color="red")
-        plt.legend()
+        handles, labels = plt.gca().get_legend_handles_labels()
+        label_to_handle = dict(zip(labels, handles))
+        legend_order = ["true"] + plot_methods
+        plt.legend(
+            [label_to_handle[label] for label in legend_order],
+            legend_order,
+        )
         nameplot = path + "/all.pdf"
         plt.savefig(nameplot, bbox_inches="tight")
         plt.close()
@@ -343,10 +351,10 @@ def parse_args():
         default=None,
         help="Seed to simulate. Repeat option to pass multiple seeds. If omitted, uses --seed-start..--seed-end.",
     )
-    parser.add_argument("--seed-start", type=int, default=0)
-    parser.add_argument("--seed-end", type=int, default=9)
-    parser.add_argument("--aggregate-seed-start", type=int, default=0)
-    parser.add_argument("--aggregate-seed-end", type=int, default=9)
+    parser.add_argument("--seed-start", type=int, default=572)
+    parser.add_argument("--seed-end", type=int, default=581)
+    parser.add_argument("--aggregate-seed-start", type=int, default=572)
+    parser.add_argument("--aggregate-seed-end", type=int, default=581)
     parser.add_argument("--n-sim", type=int, default=100)
     parser.add_argument("--max-designs", type=int, default=None)
     parser.add_argument("--no-plot", action="store_true")
