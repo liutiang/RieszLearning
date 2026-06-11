@@ -221,20 +221,28 @@ def write_mae_table(res_dict):
 def write_coverage_plot(res_dict, truth):
     ensure_dir(COVERAGE_BASE_DIR)
     plt.figure()
+    plot_methods = ["dr", "direct", "ips"]
     method_strs = [
         "{}. Bias: {:.3f}, RMSE: {:.3f}, Coverage: {:.3f}".format(
             method,
-            d["bias"],
-            d["rmse"],
-            d["cov"],
+            res_dict[method]["bias"],
+            res_dict[method]["rmse"],
+            res_dict[method]["cov"],
         )
-        for method, d in res_dict.items()
+        for method in plot_methods
     ]
     plt.title("\n".join(method_strs))
-    for method, d in res_dict.items():
+    for method in plot_methods:
+        d = res_dict[method]
         plt.hist(np.array(d["point"]), alpha=0.5, label=method)
     plt.axvline(x=float(np.mean(truth)), label="true", color="red")
-    plt.legend()
+    handles, labels = plt.gca().get_legend_handles_labels()
+    label_to_handle = dict(zip(labels, handles))
+    legend_order = ["true"] + plot_methods
+    plt.legend(
+        [label_to_handle[label] for label in legend_order],
+        legend_order,
+    )
     plt.savefig(COVERAGE_BASE_DIR / "IHDP_coverage_RF.pdf", bbox_inches="tight")
     plt.close()
 
