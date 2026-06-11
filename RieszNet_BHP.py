@@ -298,17 +298,6 @@ def write_histograms(aggregate_seeds):
                 res[method]["rmse"].append(loaded[0][method]["rmse"])
                 res[method]["cov"].append(loaded[0][method]["cov"])
 
-        nuisance_str = (
-            "reg RMSE: {:.3f}, R2: {:.3f}, rr RMSE: {:.3f}, R2: {:.3f}\n"
-            "IPS orthogonality: {:.3f}, DR orthogonality: {:.3f}"
-        ).format(
-            np.mean(rmse_reg),
-            np.mean(r2_reg),
-            np.mean(rmse_rr),
-            np.mean(r2_rr),
-            np.mean(ipsbias),
-            np.mean(drbias),
-        )
         plot_methods = ["dr", "direct", "ips"]
         method_strs = [
             "{}. Bias: {:.3f}, RMSE: {:.3f}, Coverage: {:.3f}".format(
@@ -316,12 +305,14 @@ def write_histograms(aggregate_seeds):
             )
             for method in plot_methods
         ]
-        plt.figure()
-        plt.title("\n".join([nuisance_str] + method_strs))
+        fig = plt.figure()
+        plt.title("\n".join(method_strs))
         for method in plot_methods:
             d = res[method]
             plt.hist(np.array(d["point"]), alpha=0.5, label=method)
         plt.axvline(x=np.mean(truth), label="true", color="red")
+        plt.xlabel("estimates")
+        plt.ylabel("frequency")
         handles, labels = plt.gca().get_legend_handles_labels()
         label_to_handle = dict(zip(labels, handles))
         legend_order = ["true"] + plot_methods
@@ -331,7 +322,7 @@ def write_histograms(aggregate_seeds):
         )
         nameplot = path + "/all.pdf"
         plt.savefig(nameplot, bbox_inches="tight")
-        plt.close()
+        plt.close(fig)
 
 
 def parse_args():
@@ -351,10 +342,10 @@ def parse_args():
         default=None,
         help="Seed to simulate. Repeat option to pass multiple seeds. If omitted, uses --seed-start..--seed-end.",
     )
-    parser.add_argument("--seed-start", type=int, default=572)
-    parser.add_argument("--seed-end", type=int, default=581)
-    parser.add_argument("--aggregate-seed-start", type=int, default=572)
-    parser.add_argument("--aggregate-seed-end", type=int, default=581)
+    parser.add_argument("--seed-start", type=int, default=0)
+    parser.add_argument("--seed-end", type=int, default=9)
+    parser.add_argument("--aggregate-seed-start", type=int, default=0)
+    parser.add_argument("--aggregate-seed-end", type=int, default=9)
     parser.add_argument("--n-sim", type=int, default=100)
     parser.add_argument("--max-designs", type=int, default=None)
     parser.add_argument("--no-plot", action="store_true")
